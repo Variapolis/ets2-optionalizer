@@ -3,9 +3,6 @@ import re
 import curses
 from pathlib import Path
 
-STEAM_APP_ID = "227300"
-
-
 # ----------------------------
 # Folder Selection
 # ----------------------------
@@ -19,7 +16,7 @@ def select_ets2_folder():
         root.attributes('-topmost', True)
 
         folder = filedialog.askdirectory(
-            title="Select Euro Truck Simulator 2 Folder"
+            title="Select your Truck Simulator Directory"
         )
 
         if folder:
@@ -29,7 +26,7 @@ def select_ets2_folder():
         exit()
 
     except Exception:
-        print("GUI not available. Please paste ETS2 path manually.")
+        print("GUI not available. Please paste Game path manually.")
         folder = input("Path: ").strip()
         if not folder:
             print("No path provided.")
@@ -143,7 +140,7 @@ def collect_mods(workshop_path):
 def arrow_menu(mod_states):
     def draw_menu(stdscr, selected_idx):
         stdscr.clear()
-        stdscr.addstr(0, 0, "Use Up/Down arrows to navigate, Space to toggle, A=All On, D=All Off, Q=Quit\n\n")
+        stdscr.addstr(0, 0, "MODS PACKAGED AS .scs ARE NOT SUPPORTED! Use Up/Down arrows to navigate, Space to toggle, A=All On, D=All Off, Q=Quit\n\n")
         for i, (_, state, name) in enumerate(mod_states):
             mark = "[x]" if state else "[ ]"
             if i == selected_idx:
@@ -185,21 +182,67 @@ def arrow_menu(mod_states):
 
     curses.wrapper(main_loop)
 
+# ----------------------------
+# Choose Game
+# ----------------------------
+def choose_game(stdscr):
+    curses.curs_set(0)  # Hide cursor
+    options = ["Euro Truck Simulator 2 (ETS2)", "American Truck Simulator (ATS)", "Quit"]
+    current_idx = 0
+
+    while True:
+        stdscr.clear()
+        stdscr.addstr(0, 0, "MODS PACKAGED AS .scs ARE NOT SUPPORTED! Select a game (use arrow keys and Enter, Q to quit):")
+        
+        for i, option in enumerate(options):
+            if i == current_idx:
+                stdscr.addstr(i + 2, 2, f"> {option}", curses.A_REVERSE)
+            else:
+                stdscr.addstr(i + 2, 2, f"  {option}")
+
+        key = stdscr.getch()
+        
+        if key in [curses.KEY_UP, ord('k')]:
+            current_idx = (current_idx - 1) % len(options)
+        elif key in [curses.KEY_DOWN, ord('j')]:
+            current_idx = (current_idx + 1) % len(options)
+        elif key in [curses.KEY_ENTER, 10, 13]:
+            if options[current_idx] == "Quit":
+                return "Q"
+            return "ETS2" if current_idx == 0 else "ATS"
+        elif key in [ord('q'), ord('Q')]:
+            return "Q"
+
+        stdscr.refresh()
 
 # ----------------------------
 # Main
 # ----------------------------
 def main():
+    global STEAM_APP_ID
+    choice = curses.wrapper(choose_game)
+    if choice == "Q":
+        return
+    if choice == "ATS":
+        STEAM_APP_ID = "270880"
+        print("Looking for ATS")
+    else:
+        STEAM_APP_ID = "227300"
+        print("Looking for ETS2")
+    print("Select your Truck Simulator Folder or alternatively, your Steamapps/Workshop/Content/ folder where your game is located.")
+
     ets2_path = select_ets2_folder()
     workshop_path = find_workshop_path(ets2_path)
 
     if not workshop_path.exists():
         print("Workshop path not found.")
+        input('Press Enter to finish')
         return
 
     manifests = collect_mods(workshop_path)
     if not manifests:
         print("No mods with manifest.sii found.")
+        input('Press Enter to finish')
         return
 
     mod_states = []
